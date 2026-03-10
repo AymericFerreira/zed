@@ -33,7 +33,7 @@ pub struct TypeToAcceptSettings {
 impl Default for TypeToAcceptSettings {
     fn default() -> Self {
         Self {
-            enabled: false,
+            enabled: true,
             ghost_opacity: 0.4,
             error_flash_duration_ms: 200,
             show_progress: true,

@@ -785,6 +785,15 @@ actions!(
         ShowWordCompletions,
         /// Randomly shuffles selected lines.
         ShuffleLines,
+        /// Skips the remaining text in a type-to-accept session
+        /// and accepts the AI-suggested edit immediately.
+        SkipTypeToAccept,
+        /// Jumps the cursor to the start of the current type-to-accept session.
+        GoToTypeToAccept,
+        /// Moves to the next type-to-accept session.
+        NextTypeToAccept,
+        /// Moves to the previous type-to-accept session.
+        PrevTypeToAccept,
         /// Navigates to the next signature in the signature help popup.
         SignatureHelpNext,
         /// Navigates to the previous signature in the signature help popup.

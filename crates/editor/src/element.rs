@@ -253,6 +253,9 @@ impl EditorElement {
         register_action(editor, window, Editor::newline_below);
         register_action(editor, window, Editor::backspace);
         register_action(editor, window, Editor::skip_type_to_accept);
+        register_action(editor, window, Editor::go_to_type_to_accept);
+        register_action(editor, window, Editor::next_type_to_accept);
+        register_action(editor, window, Editor::prev_type_to_accept);
         register_action(editor, window, Editor::blame_hover);
         register_action(editor, window, Editor::delete);
         register_action(editor, window, Editor::tab);

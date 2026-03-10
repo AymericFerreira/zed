@@ -239,6 +239,7 @@ impl AgentTool for EditFileTool {
         event_stream: ToolCallEventStream,
         cx: &mut App,
     ) -> Task<Result<Self::Output, Self::Output>> {
+        log::warn!("EditFileTool::run() called");
         cx.spawn(async move |cx: &mut AsyncApp| {
             let input = input.recv().await.map_err(|e| EditFileToolOutput::Error {
                 error: format!("Failed to receive tool input: {e}"),

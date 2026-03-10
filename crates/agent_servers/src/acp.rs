@@ -1146,6 +1146,7 @@ impl acp::Client for ClientDelegate {
         &self,
         arguments: acp::RequestPermissionRequest,
     ) -> Result<acp::RequestPermissionResponse, acp::Error> {
+        log::warn!("ClientDelegate::request_permission called");
         let thread;
         {
             let sessions_ref = self.sessions.borrow();
@@ -1174,6 +1175,7 @@ impl acp::Client for ClientDelegate {
         &self,
         arguments: acp::WriteTextFileRequest,
     ) -> Result<acp::WriteTextFileResponse, acp::Error> {
+        log::warn!("!!! ClientDelegate::write_text_file CALLED for path: {:?}", arguments.path);
         let cx = &mut self.cx.clone();
         let task = self
             .session_thread(&arguments.session_id)?
@@ -1190,6 +1192,7 @@ impl acp::Client for ClientDelegate {
         &self,
         arguments: acp::ReadTextFileRequest,
     ) -> Result<acp::ReadTextFileResponse, acp::Error> {
+        log::warn!("ClientDelegate::read_text_file called for path: {:?}", arguments.path);
         let task = self.session_thread(&arguments.session_id)?.update(
             &mut self.cx.clone(),
             |thread, cx| {
@@ -1206,6 +1209,7 @@ impl acp::Client for ClientDelegate {
         &self,
         notification: acp::SessionNotification,
     ) -> Result<(), acp::Error> {
+        log::warn!("ClientDelegate::session_notification called: {:?}", std::mem::discriminant(&notification.update));
         let sessions = self.sessions.borrow();
         let session = sessions
             .get(&notification.session_id)
@@ -1341,6 +1345,7 @@ impl acp::Client for ClientDelegate {
         &self,
         args: acp::CreateTerminalRequest,
     ) -> Result<acp::CreateTerminalResponse, acp::Error> {
+        log::warn!("ClientDelegate::create_terminal called");
         let thread = self.session_thread(&args.session_id)?;
         let project = thread.read_with(&self.cx, |thread, _cx| thread.project().clone())?;
 
@@ -1376,6 +1381,7 @@ impl acp::Client for ClientDelegate {
         &self,
         args: acp::KillTerminalCommandRequest,
     ) -> Result<acp::KillTerminalCommandResponse, acp::Error> {
+        log::warn!("ClientDelegate::kill_terminal_command called");
         self.session_thread(&args.session_id)?
             .update(&mut self.cx.clone(), |thread, cx| {
                 thread.kill_terminal(args.terminal_id, cx)
@@ -1384,11 +1390,13 @@ impl acp::Client for ClientDelegate {
         Ok(Default::default())
     }
 
-    async fn ext_method(&self, _args: acp::ExtRequest) -> Result<acp::ExtResponse, acp::Error> {
+    async fn ext_method(&self, args: acp::ExtRequest) -> Result<acp::ExtResponse, acp::Error> {
+        log::warn!("ClientDelegate::ext_method called: {:?}", args.method);
         Err(acp::Error::method_not_found())
     }
 
-    async fn ext_notification(&self, _args: acp::ExtNotification) -> Result<(), acp::Error> {
+    async fn ext_notification(&self, args: acp::ExtNotification) -> Result<(), acp::Error> {
+        log::warn!("ClientDelegate::ext_notification called: {:?}", args.method);
         Err(acp::Error::method_not_found())
     }
 

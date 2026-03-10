@@ -24,8 +24,10 @@ use language_model::{
     LanguageModel, LanguageModelCompletionError, LanguageModelRequest, LanguageModelRequestMessage,
     LanguageModelToolChoice, MessageContent, Role,
 };
-use project::{AgentLocation, Project};
+use agent_settings::AgentSettings;
+use project::{AgentLocation, Project, TypeToAcceptRequest};
 use reindent::{IndentDelta, Reindenter};
+use settings::Settings;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::{mem, ops::Range, pin::Pin, sync::Arc, task::Poll};
@@ -251,6 +253,7 @@ impl EditAgent {
         Task<Result<EditAgentOutput>>,
         mpsc::UnboundedReceiver<EditAgentOutputEvent>,
     ) {
+        log::warn!("edit_agent::edit() called for buffer");
         let this = self.clone();
         let (events_tx, events_rx) = mpsc::unbounded();
         let conversation = conversation.clone();
@@ -370,6 +373,12 @@ impl EditAgent {
                 // Edit the buffer and report edits to the action log as part of the
                 // same effect cycle, otherwise the edit will be reported as if the
                 // user made it.
+                let new_text_for_tta: String = edits
+                    .iter()
+                    .map(|(_, text)| text.as_ref())
+                    .collect::<Vec<_>>()
+                    .join("");
+
                 let (min_edit_start, max_edit_end) = cx.update(|cx| {
                     let (min_edit_start, max_edit_end) = buffer.update(cx, |buffer, cx| {
                         buffer.edit(edits.iter().cloned(), None, cx);
@@ -403,6 +412,51 @@ impl EditAgent {
                             );
                         });
                     }
+
+                    let type_to_accept_enabled = AgentSettings::get_global(cx)
+                        .type_to_accept
+                        .enabled;
+
+                    log::warn!(
+                        "edit_agent: type_to_accept_enabled={}, new_text_for_tta_len={}",
+                        type_to_accept_enabled,
+                        new_text_for_tta.len()
+                    );
+
+                    if type_to_accept_enabled && !new_text_for_tta.is_empty() {
+                        let ext_str = buffer.read(cx)
+                            .file()
+                            .and_then(|file| {
+                                file.path()
+                                    .extension()
+                                    .map(|e| e.to_lowercase())
+                            });
+                        let should_skip = ext_str
+                            .as_ref()
+                            .map(|ext| {
+                                AgentSettings::get_global(cx)
+                                    .type_to_accept
+                                    .skip_file_types
+                                    .iter()
+                                    .any(|skip| skip == ext)
+                            })
+                            .unwrap_or(false);
+
+                        if !should_skip {
+                            self.project.update(cx, |project, cx| {
+                                project.request_type_to_accept(
+                                    TypeToAcceptRequest {
+                                        buffer: buffer.clone(),
+                                        new_text: new_text_for_tta.clone(),
+                                        start: min_edit_start,
+                                        end: max_edit_end,
+                                    },
+                                    cx,
+                                );
+                            });
+                        }
+                    }
+
                     (min_edit_start, max_edit_end)
                 });
                 output_events

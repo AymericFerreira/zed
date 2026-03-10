@@ -1122,8 +1122,8 @@
     "type_to_accept": {
       // Whether type-to-accept mode is enabled.
       //
-      // Default: false
-      "enabled": false,
+      // Default: true
+      "enabled": true,
       // Opacity of the pending-text overlay (0.0 = invisible, 1.0 = opaque).
       //
       // Default: 0.4

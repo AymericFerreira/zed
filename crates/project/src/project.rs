@@ -241,6 +241,7 @@ pub struct Project {
     settings_observer: Entity<SettingsObserver>,
     toolchain_store: Option<Entity<ToolchainStore>>,
     agent_location: Option<AgentLocation>,
+    pending_type_to_accept: Option<TypeToAcceptRequest>,
     downloading_files: Arc<Mutex<HashMap<(WorktreeId, String), DownloadingFile>>>,
 }
 
@@ -397,10 +398,19 @@ pub enum Event {
     EntryRenamed(ProjectTransaction, ProjectPath, PathBuf),
     WorkspaceEditApplied(ProjectTransaction),
     AgentLocationChanged,
+    TypeToAcceptRequested,
     BufferEdited,
 }
 
 pub struct AgentLocationChanged;
+
+#[derive(Clone, Debug)]
+pub struct TypeToAcceptRequest {
+    pub buffer: Entity<Buffer>,
+    pub new_text: String,
+    pub start: Anchor,
+    pub end: Anchor,
+}
 
 pub enum DebugAdapterClientState {
     Starting(Task<Option<Arc<DebugAdapterClient>>>),
@@ -1331,6 +1341,7 @@ impl Project {
                 toolchain_store: Some(toolchain_store),
 
                 agent_location: None,
+                pending_type_to_accept: None,
                 downloading_files: Default::default(),
             }
         })
@@ -1562,6 +1573,7 @@ impl Project {
 
                 toolchain_store: Some(toolchain_store),
                 agent_location: None,
+                pending_type_to_accept: None,
                 downloading_files: Default::default(),
             };
 
@@ -1838,6 +1850,7 @@ impl Project {
                 remotely_created_models: Arc::new(Mutex::new(RemotelyCreatedModels::default())),
                 toolchain_store: None,
                 agent_location: None,
+                pending_type_to_accept: None,
                 downloading_files: Default::default(),
             };
             project.set_role(role, cx);
@@ -5917,6 +5930,23 @@ impl Project {
 
     pub fn agent_location(&self) -> Option<AgentLocation> {
         self.agent_location.clone()
+    }
+
+    pub fn request_type_to_accept(&mut self, request: TypeToAcceptRequest, cx: &mut Context<Self>) {
+        log::warn!(
+            "project: type-to-accept requested, new_text_len={}",
+            request.new_text.len()
+        );
+        self.pending_type_to_accept = Some(request);
+        cx.emit(Event::TypeToAcceptRequested);
+    }
+
+    pub fn peek_pending_type_to_accept(&self) -> Option<&TypeToAcceptRequest> {
+        self.pending_type_to_accept.as_ref()
+    }
+
+    pub fn take_pending_type_to_accept(&mut self) -> Option<TypeToAcceptRequest> {
+        self.pending_type_to_accept.take()
     }
 
     pub fn path_style(&self, cx: &App) -> PathStyle {

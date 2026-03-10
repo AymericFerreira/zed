@@ -2223,6 +2223,12 @@ impl Thread {
     ) -> Option<Task<LanguageModelToolResult>> {
         cx.notify();
 
+        log::warn!(
+            "thread: handle_tool_use_event called for tool '{}', input_complete={}",
+            tool_use.name,
+            tool_use.is_input_complete,
+        );
+
         let tool = self.tool(tool_use.name.as_ref());
         let mut title = SharedString::from(&tool_use.name);
         let mut kind = acp::ToolKind::Other;

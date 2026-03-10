@@ -20,7 +20,9 @@ use language::language_settings::{self, FormatOnSave};
 use language::{Buffer, LanguageRegistry};
 use language_model::LanguageModelToolResultContent;
 use project::lsp_store::{FormatTrigger, LspFormatTarget};
-use project::{AgentLocation, Project, ProjectPath};
+use agent_settings::AgentSettings;
+use project::{AgentLocation, Project, ProjectPath, TypeToAcceptRequest};
+use settings::Settings;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::ops::Range;
@@ -551,6 +553,7 @@ impl EditSession {
         event_stream: &ToolCallEventStream,
         cx: &mut AsyncApp,
     ) -> Result<StreamingEditFileToolOutput, StreamingEditFileToolOutput> {
+        log::warn!("streaming_edit_file_tool: finalize() called");
         let old_text = self.old_text.clone();
 
         match input.mode {
@@ -581,6 +584,81 @@ impl EditSession {
                             edit.old_text.replace('\n', "\\n"),
                             edit.new_text.replace('\n', "\\n")
                         );
+                    }
+                }
+            }
+        }
+
+        // Trigger type-to-accept if enabled
+        {
+            let (type_to_accept_enabled, should_skip) = self.buffer.read_with(cx, |buffer, cx| {
+                let settings = AgentSettings::get_global(cx);
+                let enabled = settings.type_to_accept.enabled;
+                let skip = buffer
+                    .file()
+                    .and_then(|file| file.path().extension().map(|e| e.to_lowercase()))
+                    .map(|ext| {
+                        settings
+                            .type_to_accept
+                            .skip_file_types
+                            .iter()
+                            .any(|skip| skip == &ext)
+                    })
+                    .unwrap_or(false);
+                (enabled, skip)
+            });
+
+            log::warn!(
+                "type-to-accept: enabled={}, should_skip={}, old_text_len={}",
+                type_to_accept_enabled,
+                should_skip,
+                old_text.len()
+            );
+
+            if type_to_accept_enabled && !should_skip {
+                let new_text = self.buffer.read_with(cx, |buffer, _| buffer.text());
+                log::warn!(
+                    "type-to-accept: old_text_len={}, new_text_len={}, texts_equal={}",
+                    old_text.len(),
+                    new_text.len(),
+                    old_text.as_str() == new_text.as_str()
+                );
+                if old_text.as_str() != new_text.as_str() {
+                    let buffer_snapshot =
+                        self.buffer.read_with(cx, |buffer, _| buffer.snapshot());
+                    let diff_start = old_text
+                        .bytes()
+                        .zip(new_text.bytes())
+                        .position(|(a, b)| a != b)
+                        .unwrap_or(0);
+                    let new_end = new_text.len();
+                    let changed_text = new_text[diff_start..new_end].to_string();
+
+                    log::warn!(
+                        "type-to-accept: diff_start={}, new_end={}, changed_text_len={}",
+                        diff_start,
+                        new_end,
+                        changed_text.len()
+                    );
+
+                    if !changed_text.is_empty() {
+                        let start_anchor = buffer_snapshot.anchor_after(diff_start);
+                        let end_anchor = buffer_snapshot.anchor_before(new_end);
+
+                        log::warn!("type-to-accept: requesting type-to-accept session");
+                        cx.update(|cx| {
+                            tool.project.update(cx, |project, cx| {
+                                project.request_type_to_accept(
+                                    TypeToAcceptRequest {
+                                        buffer: self.buffer.clone(),
+                                        new_text: changed_text,
+                                        start: start_anchor,
+                                        end: end_anchor,
+                                    },
+                                    cx,
+                                );
+                            });
+                        });
                     }
                 }
             }

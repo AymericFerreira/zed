@@ -1081,11 +1081,13 @@ impl NativeAgentConnection {
                                 .detach();
                             }
                             ThreadEvent::ToolCall(tool_call) => {
+                                log::warn!("agent: ThreadEvent::ToolCall received");
                                 acp_thread.update(cx, |thread, cx| {
                                     thread.upsert_tool_call(tool_call, cx)
                                 })??;
                             }
                             ThreadEvent::ToolCallUpdate(update) => {
+                                log::warn!("agent: ThreadEvent::ToolCallUpdate received");
                                 acp_thread.update(cx, |thread, cx| {
                                     thread.update_tool_call(update, cx)
                                 })??;

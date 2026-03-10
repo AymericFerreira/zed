@@ -869,6 +869,15 @@
       "down": "editor::SignatureHelpNext",
     },
   },
+  {
+    "context": "Editor",
+    "bindings": {
+      "ctrl-shift-enter": "editor::SkipTypeToAccept",
+      "ctrl-shift-g": "editor::GoToTypeToAccept",
+      "ctrl-shift-]": "editor::NextTypeToAccept",
+      "ctrl-shift-[": "editor::PrevTypeToAccept",
+    },
+  },
   // Custom bindings
   {
     "use_key_equivalents": true,

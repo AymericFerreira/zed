@@ -560,6 +560,7 @@ mod tests {
             message_editor_min_lines: 1,
             tool_permissions,
             show_turn_stats: false,
+            type_to_accept: agent_settings::TypeToAcceptSettings::default(),
         }
     }
 

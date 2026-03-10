@@ -592,6 +592,7 @@ mod tests {
             message_editor_min_lines: 1,
             tool_permissions: Default::default(),
             show_turn_stats: false,
+            type_to_accept: agent_settings::TypeToAcceptSettings::default(),
         };
 
         cx.update(|cx| {
